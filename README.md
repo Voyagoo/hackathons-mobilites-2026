@@ -10,8 +10,7 @@ This project was developed as part of the Hackaviz Mobilités 2026 (special data
 
 **Team**
 
-- TODO: Hok Seng 
-     + Inequality in job accessibility
+- TODO: Name
 - TODO: Name
 - TODO: Name
 
