@@ -1,33 +1,17 @@
 [project]
-name            = "hackathons-mobilites-2026"
-version         = "0.1.0"
-description     = "IDFM Hackaviz 2026 - Challenge 2: Mobility and employment"
-requires-python = ">=3.12"
-dependencies    = [
+name = "hackathon-dataviz"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
     "duckdb>=2.0.0",
-    "fastapi>=0.162.0",
     "geopandas>=1.2.0",
-    "jinja2>=3.1.6",
-    "matplotlib>=3.11.2",
-    "numpy>=2.5.4",
     "pandas>=3.1.1",
     "plotly>=7.1.0",
     "pyarrow>=26.0.1",
-    "seaborn>=0.13.2",
-    "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]
 dev = [
     "ipykernel>=7.4.0",
-    "jupyterlab>=4.6.5",
-    "ruff>=0.17.4",
+    "nbformat>=5.11.1",
 ]
-
-# Installs utils/ so notebooks can run `from utils.loaders import ...`
-[build-system]
-requires      = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["utils"]
