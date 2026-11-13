@@ -1,7 +1,7 @@
 # Travailler sans voiture en Île-de-France : où, pour qui, à quelle heure ?
 
 **Équipe :** Les Isochrones (Sokheng DIN, Veasna RA, Hok Seng, Menghor Thuo)  
-**Mail de contact :** din.sokheng08@gmail.com  
+**Mail de contact :** din.sokheng08@gmail.com, raveasna15@gmail.com, senghok789@gmail.com, thuomenghor@gmail.com
 **Défi :** Défi 2, "Les mobilités et l'emploi"
 
 Une dataviz interactive, en français et en anglais, qui mesure commune par commune combien d'emplois sont accessibles
