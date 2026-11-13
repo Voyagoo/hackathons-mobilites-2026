@@ -23,7 +23,7 @@ import sys
 import geopandas as gpd
 import pandas as pd
 
-from pipeline import step1_communes, step3_travel_times
+from pipeline import communes, travel_times
 from pipeline.config import (
     COMMUNES_PARQUET,
     DEPARTURE_WINDOW,
@@ -46,7 +46,7 @@ def unroutable_areas() -> list[str]:
 
 
 def candidate_stations(com: gpd.GeoDataFrame, areas: list[str]) -> gpd.GeoDataFrame:
-    stations = step1_communes.station_departures()
+    stations = communes.station_departures()
     stations = gpd.GeoDataFrame(stations, geometry=gpd.points_from_xy(stations["lon"], stations["lat"]), crs=4326)
     joined = gpd.sjoin(stations, com.loc[com["code"].isin(areas), ["code", "geometry"]], predicate="within")
     joined = joined.sort_values(["code", "departures"], ascending=[True, False])
@@ -71,7 +71,7 @@ def main() -> None:
     destinations = gpd.GeoDataFrame({"id": com["code"].to_numpy()},
                                     geometry=gpd.points_from_xy(com["lon"], com["lat"]), crs=4326)
     scenario = SCENARIOS_BY_NAME[PEAK]
-    network = step3_travel_times.load_network(r5py)
+    network = travel_times.load_network(r5py)
     ttm = pd.DataFrame(r5py.TravelTimeMatrix(
         network, origins=candidates[["id", "geometry"]], destinations=destinations,
         transport_modes=[r5py.TransportMode.TRANSIT, r5py.TransportMode.WALK],
