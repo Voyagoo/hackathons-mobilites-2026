@@ -5,9 +5,10 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
-ROOT_DIR    = Path(__file__).resolve().parent.parent
-DATA_DIR    = ROOT_DIR / "data"
-FIGURES_DIR = ROOT_DIR / "outputs" / "figures"
+ROOT_DIR      = Path(__file__).resolve().parent.parent
+DATA_DIR      = ROOT_DIR / "data"
+PROCESSED_DIR = DATA_DIR / "processed"  # pipeline outputs (git-ignored with data/)
+FIGURES_DIR   = ROOT_DIR / "outputs" / "figures"
 
 
 def load_csv(name: str, **kwargs) -> pd.DataFrame:

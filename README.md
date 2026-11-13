@@ -45,10 +45,19 @@ TODO
 
 ## Installation and usage
 
+Requires Python 3.12, [uv](https://docs.astral.sh/uv/) and a Java JDK 21 or later (for r5py).
+
 ```bash
 uv sync
-uv run jupyter lab
-uv run uvicorn app.main:app --reload
+
+# Pipeline (writes to data/processed/)
+uv run python -m pipeline.step1_communes          # commune table: jobs, residents, income
+uv run python -m pipeline.step2_network_inputs    # GTFS zip + OpenStreetMap extract
+uv run python -m pipeline.step3_travel_times      # travel-time matrices (r5py), slow
+uv run python -m pipeline.step4_access            # jobs reachable + equality indicators
+
+# Dash app
+uv run uvicorn app.main:server --reload
 ```
 
 The `data/` folder is not versioned; see [docs/data_sources.md](docs/data_sources.md) to download the data.
