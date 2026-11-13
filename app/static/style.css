@@ -111,7 +111,7 @@ p {
 }
 
 .nav input,
-.pills input {
+.pills input[type="radio"] {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -1007,4 +1007,10 @@ h3 {
 
 .kpis {
   min-height: 68px;
+}
+
+/* Checkbox pills (map overlays): keep the box visible so on/off is not shown by colour alone. */
+.pills input[type="checkbox"] {
+  margin: 0 5px 0 0;
+  accent-color: var(--teal);
 }

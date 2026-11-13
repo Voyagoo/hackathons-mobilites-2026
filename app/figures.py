@@ -109,6 +109,13 @@ def _map_layout(fig: go.Figure, revision: str, view: dict | None = None, dark: s
     lon, lat = data.dept_outlines()
     fig.add_trace(_scatter(lon=lon, lat=lat, mode="lines", hoverinfo="skip", showlegend=False,
                            line={"color": BOUNDARY_DEPT, "width": 1.3}))
+    if view.get("rail"):
+        # Rail network overlay: RER and Transilien as a dark line on a white casing, metro and tram thinner.
+        rail = data.rail_lines()
+        for (lons, lats), color, width in ((rail["rail"], "#FFFFFF", 2.6), (rail["rail"], "#20262B", 1.1),
+                                           (rail["urban"], "#20262B", 0.6)):
+            fig.add_trace(_scatter(lon=lons, lat=lats, mode="lines", hoverinfo="skip", showlegend=False,
+                                   line={"color": color, "width": width}, opacity=0.8))
     west, south, east, north = view["bounds"]
     if MAPLIBRE:
         fig.update_layout(map={"style": "carto-positron", "bounds": {"west": west, "south": south,

@@ -14,6 +14,7 @@ from pipeline.config import (
     SUMMARY_PARQUET,
     TTM_DIR,
 )
+from utils.loaders import PROCESSED_DIR
 
 DEPT_NAMES = {
     "75": "Paris",
@@ -485,3 +486,29 @@ def focus_view(focus: str, commune: str | None) -> dict:
     box = (float(west), float(south), float(east), float(north))
     labels = town_labels() if focus == "region" else labels_in(box)
     return {"focus": focus, "bounds": box, "labels": labels, "key": f"{focus}-{commune if focus == 'selection' else ''}"}
+
+
+RAIL_GEOJSON = PROCESSED_DIR / "rail_lines.geojson"  # built by pipeline/extra_rail_lines.py (optional)
+
+
+def has_rail() -> bool:
+    return RAIL_GEOJSON.exists()
+
+
+@functools.cache
+def rail_lines() -> dict[str, tuple[list, list]]:
+    """Rail overlay as polylines per group: "rail" (RER and Transilien) and "urban" (metro and tram).
+
+    Each value is (lon, lat) with None between line pieces. Real geometry from the IDFM GTFS shapes.
+    """
+    out = {"rail": ([], []), "urban": ([], [])}
+    if not has_rail():
+        return out
+    lines = gpd.read_file(RAIL_GEOJSON)
+    for mode, geometry in zip(lines["mode"], lines.geometry, strict=True):
+        lon, lat = out["rail" if mode == "rail" else "urban"]
+        for piece in getattr(geometry, "geoms", [geometry]):
+            xs, ys = piece.xy
+            lon += [*xs, None]
+            lat += [*ys, None]
+    return out

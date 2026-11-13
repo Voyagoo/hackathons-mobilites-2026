@@ -17,7 +17,7 @@ Checklist for `phase_2.md`, section by section. ✅ = done and checked, 🟡 = b
 - ✅ Seven colour classes with finer breaks at the low end; "no route found" has its own class
 - ✅ Map metric selector (share, jobs, transit vs car, gain 30→60 min, residents in low-access communes)
 - ✅ Hover tooltip content, selected-commune outline, commune search
-- ⬜ Rail/metro overlay as a separate toggle: not possible, `shapes.txt` is no longer in `data/IDFM-gtfs/`. The basemap shows the rail lines instead.
+- ✅ Rail/metro overlay with an on/off switch (see the map upgrade section)
 
 ## §5 Synchronised views
 - ✅ One shared state (view, mode, departure, budget, metric, commune); every view reads it
@@ -88,7 +88,7 @@ Checked by screenshot at 1600×900 and 1500×987, and by running the Explore cal
 - ⬜ §4C Fullscreen: not done
 - ✅ §5 Paris: "Paris & inner ring" zoom preset, with thicker boundaries and local labels (Option B + C)
 - ✅ §6 Context: reference towns on the regional view (white text on dark fills), decluttered local labels when zoomed
-- ⬜ §6 RER / Transilien overlay: not possible, the GTFS shapes are no longer in `data/`
+- ✅ §6 Rail overlay: RER and Transilien (thick) and metro and tram (thin) from the IDFM GTFS shapes, clipped to the region, with a "Rail network" on/off switch on the map (`pipeline/extra_rail_lines.py`)
 - ✅ §7 Map modes: share or number of jobs, transit vs car, **change vs weekday peak** (new, diverging brown–teal scale centred on zero), gain from 30 to 60 min, residents in low-access communes
 - ✅ §8 Travel-time mode: origin marked, bands only up to the selected budget, "over budget, up to 90 min" and "over 90 min or no route" shown separately, legend in minutes, note that times are station to station
 - ✅ §9 Map as centrepiece: legend and controls float on the map instead of taking rows above and below it

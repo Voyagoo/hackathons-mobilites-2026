@@ -190,6 +190,9 @@ def _explore() -> html.Div:
                     {"label": "Paris & inner ring", "value": "paris"},
                     {"label": "Selected commune", "value": "selection"},
                 ]),
+                dcc.Checklist(id="overlay", className="pills", inline=True,
+                              value=["rail"] if data.has_rail() else [],
+                              options=[{"label": "Rail network", "value": "rail", "disabled": not data.has_rail()}]),
             ])),
             html.P(id="map-note", className="caveat"),
             class_name="map-card",
@@ -610,9 +613,10 @@ def _commune_panel(code: str, scenario: str, budget: int) -> list:
     Input("commune", "value"),
     Input("map-mode", "value"),
     Input("focus", "value"),
+    Input("overlay", "value"),
 )
 def update_explore(view: str, mode: str, time_slot: str, budget: int, metric: str, commune: str | None,
-                   map_mode: str = "region", focus: str = "region"):
+                   map_mode: str = "region", focus: str = "region", overlay: list | None = None):
     if view != "explore":
         return (no_update,) * 7
     scenario = data.scenario_for(mode, time_slot)
@@ -621,7 +625,8 @@ def update_explore(view: str, mode: str, time_slot: str, budget: int, metric: st
     def map_view(code: str | None) -> dict:
         """Zoom preset, with room left for the zoom buttons (top) and, when zoomed, the legend (bottom)."""
         preset = data.focus_view(focus, code)
-        return {**preset, "pad": (0.10, 0.02) if preset["focus"] == "region" else (0.12, 0.20)}
+        return {**preset, "pad": (0.10, 0.02) if preset["focus"] == "region" else (0.12, 0.20),
+                "rail": "rail" in (overlay or [])}
 
     if map_mode == "reach":
         # Same map card, different question: where can a trip from the selected commune go?
@@ -646,7 +651,7 @@ def update_explore(view: str, mode: str, time_slot: str, budget: int, metric: st
         sub = f"{spec['label']} · {data.SHORT_LABELS[time_slot]} against the car · {budget} min"
     elif metric == "gain":
         sub = f"{spec['label']} · {scenario_text(scenario, budget).rsplit(' · ', 1)[0]}"
-    note = "Scroll to zoom, drag to move, double-click to reset. Colour classes are the same for every scenario."
+    note = "Scroll to zoom, drag to move, double-click to reset. Lines: RER and Transilien (thick), metro and tram (thin)."
     if metric == "change":
         note = ("Percentage points of regional jobs, selected scenario minus public transport at Tue 08:30. "
                 "Brown: fewer jobs reachable than at the peak.")
