@@ -6,6 +6,9 @@
 <title>Travailler sans voiture en Île-de-France : où, pour qui, à quelle heure ?</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <!--__UI__-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
 <style>
   :root {
     --surface: #fcfcfb; --card: #ffffff; --ink: #0b0b0b; --ink-2: #4a4946; --ink-3: #6b6a66;
@@ -87,6 +90,22 @@
   .cards .c p { margin: 0; color: var(--ink-2); font-size: 14px; }
   .herotop { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
   .method { margin-top: 26px; font-size: 13px; color: var(--ink-2); max-width: 860px; }
+
+/* Chapter 2 (Hok Seng): palette and Inter font from his "Access to Work" workspace */
+#ch-qui, #s-jobs, #s-income {
+  --ink:   #172e30;
+  --ink-2: #5d6f6e;
+  --ink-3: #5d6f6e;
+  --line:  #e1e9e4;
+  --blue:  #126f73;
+  font-family: Inter, Arial, sans-serif;
+}
+#ch-qui                                    { border-top-color: #172e30; }
+#ch-qui .tag                               { color: #126f73; }
+#s-jobs .readout, #s-income .readout       { background: #f6f7f3 !important; border-color: #b9dbd2; }
+#s-jobs a, #s-income a,
+#s-jobs details.data summary,
+#s-income details.data summary             { color: #126f73; }
 </style>
 </head>
 <body>
@@ -342,6 +361,7 @@
 const D = /*__DATA__*/null;
 const SEQ  = ["#0d366b", "#184f95", "#256abf", "#3987e5", "#6da7ec", "#9ec5f4", "#cde2fb"];
 const SEQL = SEQ.slice().reverse();
+const TEAL = ["#e6f2ee", "#b9dbd2", "#88c0b6", "#56a09c", "#2a8383", "#126f73", "#102b30"];   // chapter 2 (Hok Seng)
 const GAIN = ["#e9e8e4", "#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95"];
 const DEPS = { "75": "Paris", "92": "Hauts-de-Seine", "93": "Seine-Saint-Denis", "94": "Val-de-Marne",
                "77": "Seine-et-Marne", "78": "Yvelines", "91": "Essonne", "95": "Val-d'Oise" };
@@ -545,11 +565,11 @@ function drawCatch() {
 }
 // 2a jobs map
 let jobsT = 45, jobsMap, findJobs;
-const jobsCol = d3.scaleThreshold().domain([10e3, 50e3, 200e3, 500e3, 1e6, 2e6]).range(SEQL);
+const jobsCol = d3.scaleThreshold().domain([10e3, 50e3, 200e3, 500e3, 1e6, 2e6]).range(TEAL);
 function drawJobs() {
   jobsMap = choro("map-jobs", "t-jobs", p => { const e = ea[p.c]; return e ? jobsCol(e["jobs" + jobsT]) : "var(--none)"; },
     p => { const e = ea[p.c] || {}; return [[T(`Emplois en ${jobsT} min`, `Jobs within ${jobsT} min`), intf(e["jobs" + jobsT] || 0)], [T("Revenu médian", "Median income"), e.income ? eur(e.income) : T("n.d.", "n/a")], [T("Actifs résidents", "Employed residents"), intf(p.r)]]; });
-  legend("#leg-jobs", T(["< 10\u202fk", "10-50\u202fk", "50-200\u202fk", "200-500\u202fk", "0,5-1\u202fM", "1-2\u202fM", "2\u202fM +"], ["< 10k", "10-50k", "50-200k", "200-500k", "0.5-1 M", "1-2 M", "2 M+"]), SEQL);
+  legend("#leg-jobs", T(["< 10\u202fk", "10-50\u202fk", "50-200\u202fk", "200-500\u202fk", "0,5-1\u202fM", "1-2\u202fM", "2\u202fM +"], ["< 10k", "10-50k", "50-200k", "200-500k", "0.5-1 M", "1-2 M", "2 M+"]), TEAL);
   d3.select("#t-jobs").text(T(`Emplois accessibles en ${jobsT} min en transports en commun`, `Jobs reachable within ${jobsT} min by public transport`));
   findJobs = finder("find-jobs", "out-jobs", jobsMap, p => { const e = ea[p.c] || {};
     return T(`${p.n} : ${intf(e.jobs30)} emplois en 30 min, ${intf(e.jobs45)} en 45 min, ${intf(e.jobs60)} en 60 min.`,
@@ -574,7 +594,7 @@ function drawIncome() {
   g.selectAll("rect").data(r => [30, 45, 60].map(t => ({ t, v: r["jobs" + t], r }))).join("rect").attr("tabindex", 0)
     .attr("aria-label", d => T(`Quintile ${d.r.quintile} : ${intf(d.v)} emplois en ${d.t} minutes`, `Quintile ${d.r.quintile}: ${intf(d.v)} jobs within ${d.t} minutes`))
     .attr("x", d => x1(d.t)).attr("width", x1.bandwidth()).attr("y", d => y(d.v)).attr("height", d => y(0) - y(d.v)).attr("rx", 3)
-    .attr("fill", "#2a78d6").attr("fill-opacity", d => op[d.t])
+    .attr("fill", "#126f73").attr("fill-opacity", d => op[d.t])
     .on("mousemove focus", (ev, d) => tipOn(el, ev, `Quintile ${d.r.quintile} (${eur(d.r.income_min)} - ${eur(d.r.income_max)})`, [[T(`Emplois en ${d.t} min`, `Jobs within ${d.t} min`), intf(d.v)]]))
     .on("mouseleave blur", () => tipOff(el));
   svg.append("g").selectAll("text").data(q).join("text").attr("x", r => x0(r.quintile) + x0.bandwidth() / 2).attr("y", H - m.b + 16).attr("text-anchor", "middle")
@@ -582,7 +602,7 @@ function drawIncome() {
   svg.append("g").selectAll("text").data(q).join("text").attr("x", r => x0(r.quintile) + x0.bandwidth() / 2).attr("y", H - m.b + 30).attr("text-anchor", "middle")
     .text(r => T(`${Math.round(r.income_min / 1000)}-${Math.round(r.income_max / 1000)}\u202fk€`, `€${Math.round(r.income_min / 1000)}-${Math.round(r.income_max / 1000)}k`));
   const L = svg.append("g").attr("transform", `translate(${m.l + 6},${m.t + 4})`);
-  [30, 45, 60].forEach((t, i) => { L.append("rect").attr("x", i * 70).attr("width", 12).attr("height", 12).attr("rx", 2).attr("fill", "#2a78d6").attr("fill-opacity", op[t]);
+  [30, 45, 60].forEach((t, i) => { L.append("rect").attr("x", i * 70).attr("width", 12).attr("height", 12).attr("rx", 2).attr("fill", "#126f73").attr("fill-opacity", op[t]);
     L.append("text").attr("x", i * 70 + 16).attr("y", 10).text(`${t} min`); });
   table("#tab-income", [{ h: "Quintile", f: r => "Q" + r.quintile }, { h: T("Revenu médian (€)", "Median income (€)"), f: r => `${intf(r.income_min)} - ${intf(r.income_max)}` },
     { h: T("Emplois 30 min", "Jobs 30 min"), n: 1, f: r => intf(r.jobs30) }, { h: "45 min", n: 1, f: r => intf(r.jobs45) }, { h: "60 min", n: 1, f: r => intf(r.jobs60) }], q);
