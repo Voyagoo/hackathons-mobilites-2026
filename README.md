@@ -63,19 +63,27 @@ The results the app reads are versioned in `data/processed/` (about 18 MB), so t
 
 ```bash
 uv sync
-uv run uvicorn app.main:server --reload     # http://127.0.0.1:8000
+uv run uvicorn app.main:server --reload
 ```
+
+Then open http://127.0.0.1:8000.
 
 To rebuild the results from the raw data (several GB, not versioned; sources in the table above), you also need a Java JDK 21 or later for r5py:
 
 ```bash
-uv run python -m pipeline.communes                 # commune table: jobs, residents, income
-uv run python -m pipeline.network_inputs           # GTFS zip + OpenStreetMap extract
-uv run python -m pipeline.travel_times             # travel-time matrices (r5py), about 1 hour
-uv run python -m pipeline.fix_unroutable_anchors   # move routing points the router cannot reach
+# Commune table: jobs, residents, income
+uv run python -m pipeline.communes
+# GTFS zip and OpenStreetMap extract
+uv run python -m pipeline.network_inputs
+# Travel-time matrices (r5py), about 1 hour
+uv run python -m pipeline.travel_times
+# Move routing points the router cannot reach, then recompute public transport
+uv run python -m pipeline.fix_unroutable_anchors
 uv run python -m pipeline.travel_times --force --scenarios transit_tue_0830 transit_tue_0500 transit_tue_2230 transit_tue_1200 transit_sat_0830
-uv run python -m pipeline.access                   # jobs reachable + equality indicators
-uv run python -m pipeline.extra_rail_lines         # optional rail overlay for the map
+# Jobs reachable and equality indicators
+uv run python -m pipeline.access
+# Optional rail overlay for the map
+uv run python -m pipeline.extra_rail_lines
 ```
 
 ## Deployment
@@ -86,6 +94,8 @@ The image contains the app and `data/processed/` only (no router, no Java). One 
 docker build -f deploy/Dockerfile -t access-to-work .
 docker run -d --name access-to-work --restart unless-stopped -p 127.0.0.1:8050:8000 access-to-work
 ```
+
+To try it locally first: `docker run --rm -p 8050:8000 access-to-work`, then open http://localhost:8050.
 
 Put a reverse proxy with HTTPS (for example Caddy or nginx) in front of `127.0.0.1:8050`.
 
