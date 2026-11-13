@@ -1,6 +1,6 @@
-# [Project name]
+# Access to Work | Île-de-France
 
-TODO: one-line description of what the project does (keep it very short).
+An interactive map of how many of the region's 6.1 million jobs residents can reach within 30, 45 or 60 minutes, by public transport at five times of day and by car.
 
 > Challenge 2 — Mobility and employment
 
@@ -28,7 +28,21 @@ TODO
 
 Link to the dataviz: TODO
 
-Data used: see [docs/data_sources.md](docs/data_sources.md).
+Data used:
+
+| Data | Source | Licence |
+| --- | --- | --- |
+| Jobs by place of work, census 2023 (EMP1) | [INSEE via data.gouv.fr](https://www.data.gouv.fr/datasets/emploi-au-lieu-de-travail-selon-le-statut-le-temps-de-travail-et-lage-quinquennal-donnees-detaillees-emp1) | Licence Ouverte |
+| Employed residents by place of work and mode, census 2023 (NAV2A/NAV2B) | [INSEE via data.gouv.fr](https://www.data.gouv.fr/datasets/deplacements-domicile-travail-selon-le-sexe-le-lieu-de-travail-et-le-moyen-de-transport-donnees-detaillees-nav2a-et-nav2b) | Licence Ouverte |
+| Population by commune, 2023 | [INSEE](https://www.insee.fr/fr/statistiques/8680726) | Licence Ouverte |
+| Median income by commune (Filosofi) | [data.gouv.fr](https://www.data.gouv.fr/datasets/revenu-des-francais-a-la-commune) | Licence Ouverte |
+| Commune boundaries 2025 (ADMIN EXPRESS) | [IGN via data.gouv.fr](https://www.data.gouv.fr/datasets/communes-cantons-et-epci-2025-admin-express-cog-plus-ign) | Licence Ouverte |
+| Paris arrondissement boundaries | [Ville de Paris](https://opendata.paris.fr/explore/dataset/arrondissements/) | ODbL |
+| Employment zones (composition) | [data.iledefrance.fr](https://data.iledefrance.fr/explore/dataset/base-des-zones-demploi/information/) | Licence Ouverte |
+| Public transport timetables (GTFS) | [Île-de-France Mobilités](https://prim.iledefrance-mobilites.fr/en/jeux-de-donnees/offre-horaires-tc-gtfs-idfm) | ODbL |
+| Street network (OpenStreetMap extract) | [Geofabrik](https://download.geofabrik.de/europe/france/ile-de-france.html) | ODbL 1.0 |
+
+Travel times are computed with [Conveyal R5](https://github.com/conveyal/r5) through [r5py](https://r5py.readthedocs.io/).
 
 ## Challenges overcome and data issues
 
@@ -45,22 +59,35 @@ TODO
 
 ## Installation and usage
 
-Requires Python 3.12, [uv](https://docs.astral.sh/uv/) and a Java JDK 21 or later (for r5py).
+The results the app reads are versioned in `data/processed/` (about 18 MB), so the app runs right after a clone. Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-
-# Pipeline (writes to data/processed/)
-uv run python -m pipeline.step1_communes          # commune table: jobs, residents, income
-uv run python -m pipeline.step2_network_inputs    # GTFS zip + OpenStreetMap extract
-uv run python -m pipeline.step3_travel_times      # travel-time matrices (r5py), slow
-uv run python -m pipeline.step4_access            # jobs reachable + equality indicators
-
-# Dash app
-uv run uvicorn app.main:server --reload
+uv run uvicorn app.main:server --reload     # http://127.0.0.1:8000
 ```
 
-The `data/` folder is not versioned; see [docs/data_sources.md](docs/data_sources.md) to download the data.
+To rebuild the results from the raw data (several GB, not versioned; sources in the table above), you also need a Java JDK 21 or later for r5py:
+
+```bash
+uv run python -m pipeline.communes                 # commune table: jobs, residents, income
+uv run python -m pipeline.network_inputs           # GTFS zip + OpenStreetMap extract
+uv run python -m pipeline.travel_times             # travel-time matrices (r5py), about 1 hour
+uv run python -m pipeline.fix_unroutable_anchors   # move routing points the router cannot reach
+uv run python -m pipeline.travel_times --force --scenarios transit_tue_0830 transit_tue_0500 transit_tue_2230 transit_tue_1200 transit_sat_0830
+uv run python -m pipeline.access                   # jobs reachable + equality indicators
+uv run python -m pipeline.extra_rail_lines         # optional rail overlay for the map
+```
+
+## Deployment
+
+The image contains the app and `data/processed/` only (no router, no Java). One worker needs about 520 MB of memory.
+
+```bash
+docker build -f deploy/Dockerfile -t access-to-work .
+docker run -d --name access-to-work --restart unless-stopped -p 127.0.0.1:8050:8000 access-to-work
+```
+
+Put a reverse proxy with HTTPS (for example Caddy or nginx) in front of `127.0.0.1:8050`.
 
 ## Licence
 

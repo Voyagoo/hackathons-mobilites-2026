@@ -1,0 +1,13 @@
+# Runtime dependencies of the Dash app only (no r5py, Java or Jupyter: the app never routes).
+# Versions match uv.lock, so the container shows exactly what runs locally.
+dash[fastapi]==4.5.0
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+pandas==3.1.1
+numpy==2.5.4
+geopandas==1.2.0
+shapely==2.2.0
+pyproj==3.8.0
+pyogrio==0.13.0
+plotly==7.1.0
+pyarrow==26.0.1

@@ -4,7 +4,7 @@
 - Zip the unzipped IDFM GTFS folder, because r5py expects a GTFS .zip file.
 - Check that every scenario departure date is covered by the GTFS calendar.
 
-Run: uv run python -m pipeline.step2_network_inputs
+Run: uv run python -m pipeline.network_inputs
 """
 
 import datetime as dt

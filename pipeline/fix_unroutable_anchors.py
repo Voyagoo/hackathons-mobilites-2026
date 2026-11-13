@@ -12,8 +12,8 @@ It edits data/processed/communes.parquet in place (columns lon, lat, anchor_stop
 Run it after step 3, then recompute the transit matrices and step 4:
 
     uv run python -m pipeline.fix_unroutable_anchors
-    uv run python -m pipeline.step3_travel_times --force --scenarios transit_tue_0830 ...
-    uv run python -m pipeline.step4_access
+    uv run python -m pipeline.travel_times --force --scenarios transit_tue_0830 ...
+    uv run python -m pipeline.access
 
 The car matrix is not recomputed: the point moves by a few hundred metres inside the same area.
 """

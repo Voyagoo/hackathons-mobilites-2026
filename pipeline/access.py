@@ -12,7 +12,7 @@ Outputs:
     data/processed/access_summary.parquet  P10/median/P90, P90/P10, Gini, share below half the
                                            median, for the whole region and each department
 
-Run: uv run python -m pipeline.step4_access [--sample 20]
+Run: uv run python -m pipeline.access [--sample 20]
 """
 
 import argparse

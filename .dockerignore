@@ -1,0 +1,11 @@
+# Send only what deploy/Dockerfile copies: the raw downloads in data/ are several GB.
+*
+!deploy/requirements.txt
+!utils/
+!pipeline/__init__.py
+!pipeline/config.py
+!app/
+!data/processed/
+data/processed/*.before_anchor_fix.parquet
+**/__pycache__
+**/.DS_Store

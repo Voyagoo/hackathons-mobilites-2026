@@ -5,10 +5,10 @@ Origins and destinations are the commune centroids from step 1. One matrix per s
 Pairs that cannot be reached within MAX_TRAVEL_TIME have a null travel_time.
 
 Run:
-    uv run python -m pipeline.step3_travel_times --limit 20          # smoke test, 20 communes
-    uv run python -m pipeline.step3_travel_times                     # all scenarios
-    uv run python -m pipeline.step3_travel_times --scenarios transit_tue_0830 car_tue_0830
-    uv run python -m pipeline.step3_travel_times --force             # recompute existing files
+    uv run python -m pipeline.travel_times --limit 20          # smoke test, 20 communes
+    uv run python -m pipeline.travel_times                     # all scenarios
+    uv run python -m pipeline.travel_times --scenarios transit_tue_0830 car_tue_0830
+    uv run python -m pipeline.travel_times --force             # recompute existing files
 
 The first run builds the R5 network from the OSM extract and GTFS, which takes several minutes.
 """

@@ -20,7 +20,7 @@ trip to every journey towards the east and south. The census, population and Fil
 all have arrondissement rows, so only the shapes come from the extra file.
 
 Output: data/processed/communes.parquet (GeoParquet, EPSG:4326)
-Run:    uv run python -m pipeline.step1_communes
+Run:    uv run python -m pipeline.communes
 """
 
 import duckdb
