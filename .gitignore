@@ -1,4 +1,9 @@
-data/
+# Raw downloads stay local (several GB; sources are listed in docs/data_sources.md).
+# Only the pipeline results the app reads are tracked.
+data/*
+!data/processed/
+data/processed/*.before_anchor_fix.parquet
+data/processed/*.zip
 .venv/
 __pycache__/
 .ipynb_checkpoints/
