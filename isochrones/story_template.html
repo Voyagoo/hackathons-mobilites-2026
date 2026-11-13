@@ -87,6 +87,11 @@
   .cards .c p { margin: 0; color: var(--ink-2); font-size: 14px; }
   .herotop { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
   .method { margin-top: 26px; font-size: 13px; color: var(--ink-2); max-width: 860px; }
+  /* map reading aids: Paris zoom preset, reference towns, bivariate legend */
+  .zoombar button.txt { width: auto; padding: 0 8px; font: inherit; font-size: 12px; font-weight: 600; }
+  .maplab { fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: rgba(255, 255, 255, .85);
+            stroke-linejoin: round; pointer-events: none; }
+  .legend .bivnote, .legend .sizenote { font-size: 12px; color: var(--ink-2); align-self: center; margin-left: 10px; }
 </style>
 </head>
 <body>
@@ -171,6 +176,7 @@
     <h4 id="t-jobs"></h4>
     <div class="seg" role="group" aria-label="Temps de trajet" id="seg-jobs">
       <button data-t="30" aria-pressed="false">30 min</button><button data-t="45" aria-pressed="true">45 min</button><button data-t="60" aria-pressed="false">60 min</button></div>
+    <div class="seg" role="group" aria-label="Vue de la carte" id="seg-jobsview"></div>
     <div class="readout" id="out-jobs" aria-live="polite"></div>
     <div id="map-jobs"></div><div class="legend" id="leg-jobs"></div>
     <details class="data"><summary><span lang="fr">Voir les données en tableau (communes de plus de 5&nbsp;000 actifs)</span><span lang="en">Show the data as a table (towns with over 5,000 workers)</span></summary><div class="wrap" id="tab-jobs"></div></details>
@@ -425,18 +431,53 @@ function baseMap(el, labelId) {
   const zoom = attachZoom(el, svg, root, path, w, h, { current: townFeature });
   return { svg, root, path, proj, zoom };
 }
+/* reference towns labelled on every map (codes checked against the data) */
+const REF_TOWNS  = ["95127", "78361", "78646", "78517", "91228", "91223", "77288", "77186", "77284", "95527", "77379"];
+const PARIS_RING = { type: "FeatureCollection", features: zones.filter(f => ["75", "92", "93", "94"].includes(f.properties.d)) };
+const PARIS_ONLY = { type: "FeatureCollection", features: zones.filter(f => f.properties.d === "75") };
+const NS         = "non-scaling-stroke";
+
 function choro(elId, labelId, fill, tipRows) {
   const el = document.getElementById(elId);
-  const { root, path, zoom } = baseMap(el, labelId);
-  const sel = root.append("g").selectAll("path").data(zones).join("path").attr("class", "zone").attr("d", path).attr("stroke", "#fcfcfb").attr("stroke-width", 0.3)
+  const { svg, root, path, zoom } = baseMap(el, labelId);
+
+  // communes: thin uniform lines that keep their width when zooming
+  const sel = root.append("g").selectAll("path").data(zones).join("path").attr("class", "zone").attr("d", path)
+    .attr("stroke", "rgba(255, 255, 255, .55)").attr("stroke-width", 0.4).attr("vector-effect", NS)
     .on("mousemove", (ev, f) => tipOn(el, ev, f.properties.n, tipRows(f.properties))).on("mouseleave", () => tipOff(el))
     .on("click", (ev, f) => setTown(f.properties));
+
+  const over = root.append("g");   // overlays drawn by a chapter (e.g. circles), under the lines and labels
+
   root.append("g").selectAll("path").data(zones.filter(f => f.properties.h)).join("path").attr("d", path)
     .attr("fill", "none").attr("stroke", "#c2410c").attr("stroke-width", 0.9).attr("pointer-events", "none");
+
+  // department borders
+  if (D.depLines) root.append("path").datum(D.depLines).attr("d", path).attr("fill", "none")
+    .attr("stroke", "#3c3b38").attr("stroke-width", 1.1).attr("stroke-opacity", .8).attr("vector-effect", NS).attr("pointer-events", "none");
+
   const mark = root.append("path").attr("fill", "none").attr("stroke", "#0b0b0b").attr("stroke-width", 2.5).attr("pointer-events", "none");
+
+  // reference town labels, kept at a constant size on screen
+  const labs = [{ n: "Paris", f: PARIS_ONLY }].concat(REF_TOWNS.filter(c => byCode[c]).map(c => ({ n: byCode[c].n, f: zones.find(z => z.properties.c === c) })));
+  const lab  = root.append("g").selectAll("text").data(labs).join("text").attr("class", "maplab").attr("text-anchor", "middle")
+    .attr("transform", d => `translate(${path.centroid(d.f)})`).text(d => d.n);
+
+  // zoom hook: anything registered here is re-sized with the current zoom factor k
+  const onZoom = [k => lab.style("font-size", (10 / k) + "px").style("stroke-width", (3 / k) + "px")];
+  const resize = () => { const k = d3.zoomTransform(svg.node()).k; onZoom.forEach(fn => fn(k)); };
+  new MutationObserver(resize).observe(root.node(), { attributes: true, attributeFilter: ["transform"] });
+  resize();
+
+  // "Paris & petite couronne" zoom preset, next to the zoom buttons
+  d3.select(el).select(".zoombar").append("button").attr("type", "button").attr("class", "txt")
+    .attr("aria-label", T("Zoomer sur Paris et la petite couronne", "Zoom to Paris and the inner ring"))
+    .attr("title", T("Paris et petite couronne", "Paris and inner ring")).text("Paris")
+    .on("click", () => zoom.zoomTo(PARIS_RING, 6));
+
   const paint = () => sel.attr("fill", f => fill(f.properties));
   paint();
-  return { paint, zoom, highlight: p => focusTown(zoom, mark, path, p) };
+  return { paint, zoom, el, svg, root, path, over, onZoom: fn => { onZoom.push(fn); resize(); }, highlight: p => focusTown(zoom, mark, path, p) };
 }
 function focusTown(zoom, mark, path, p, autoZoom = true) {
   const f = p ? zones.find(z => z.properties.c === p.c) : null;
@@ -561,46 +602,119 @@ function drawCatch() {
     { h: T("Actifs à 60 min", "Workers within 60 min"), n: 1, f: r => pct(r.catch_60) }, { h: T("Trajet médian (min)", "Median trip (min)"), n: 1, f: r => Math.round(r.median_pt_min) }], rows);
 }
 // 2a jobs map
-let jobsT = 45, jobsMap, findJobs;
+let jobsT = 45, jobsView = "map", jobsMap, findJobs, jobsDots;
 const jobsCol = d3.scaleThreshold().domain([10e3, 50e3, 200e3, 500e3, 1e6, 2e6]).range(SEQL);
+const JOBS_LAB = { fr: ["< 10 k", "10-50 k", "50-200 k", "200-500 k", "0,5-1 M", "1-2 M", "2 M +"].map(s => s.replace(/ (?=[kM])/g, " ")),
+                   en: ["< 10k", "10-50k", "50-200k", "200-500k", "0.5-1 M", "1-2 M", "2 M+"] };
+
+/* bivariate view: worker-weighted terciles of town income (rows) x jobs reachable (columns) */
+const BLUE3 = ["#f1f0ec", "#9ec5f4", "#256abf"];   // jobs: few -> many
+const ORNG3 = ["#f1f0ec", "#f5b48f", "#c2410c"];   // income: low -> high
+const mult  = (a, b) => { const x = d3.rgb(a), y = d3.rgb(b); return d3.rgb(x.r * y.r / 255, x.g * y.g / 255, x.b * y.b / 255).formatHex(); };
+const BIV   = [0, 1, 2].map(i => [0, 1, 2].map(j => mult(ORNG3[i], BLUE3[j])));
+function wTerciles(get) {
+  const a = zones.map(f => [get(f.properties), f.properties.r]).filter(d => d[0] != null && d[1] > 0).sort((x, y) => x[0] - y[0]);
+  const tot = d3.sum(a, d => d[1]), cut = [];
+  let c = 0;
+  for (const [v, w] of a) { c += w; if (cut.length === 0 && c >= tot / 3) cut.push(v); if (cut.length === 1 && c >= 2 * tot / 3) { cut.push(v); break; } }
+  return cut;
+}
+const tcls = (v, cut) => v <= cut[0] ? 0 : v <= cut[1] ? 1 : 2;
+let incCut = null, jobCut = null;
+function bivCuts() {
+  incCut = wTerciles(p => (ea[p.c] || {}).income || null);
+  jobCut = wTerciles(p => ea[p.c] ? ea[p.c]["jobs" + jobsT] : null);
+}
+function bivFill(p) {
+  const e = ea[p.c];
+  if (!e || !e.income) return "var(--none)";
+  if (!incCut || !jobCut) bivCuts();
+  return BIV[tcls(e.income, incCut)][tcls(e["jobs" + jobsT], jobCut)];
+}
+function bivLegend() {
+  const L = d3.select("#leg-jobs").html(""), s = 16;
+  const svg = L.append("svg").attr("width", 3 * s + 70).attr("height", 3 * s + 30).attr("role", "img")
+    .attr("aria-label", T("Légende : revenu de la commune en lignes, emplois accessibles en colonnes, par tiers d'actifs",
+                          "Legend: town income in rows, reachable jobs in columns, by thirds of workers"));
+  const g = svg.append("g").attr("transform", "translate(56,4)");
+  [0, 1, 2].forEach(i => [0, 1, 2].forEach(j => g.append("rect").attr("x", j * s).attr("y", (2 - i) * s).attr("width", s - 1).attr("height", s - 1).attr("fill", BIV[i][j])));
+  g.append("text").attr("x", 1.5 * s).attr("y", 3 * s + 12).attr("text-anchor", "middle").text(T("emplois →", "jobs →"));
+  g.append("text").attr("x", -6).attr("y", 1.5 * s).attr("text-anchor", "end").attr("dominant-baseline", "middle").text(T("revenu →", "income →"));
+  L.append("span").attr("class", "bivnote").text(T("Tiers d'actifs : revenu médian de la commune et emplois accessibles dans le temps choisi. En haut à gauche : communes aisées mais mal reliées ; au milieu à gauche : revenu intermédiaire et peu d'emplois.",
+    "Thirds of workers: town median income and jobs reachable within the chosen time. Top left: well-off but poorly connected towns; middle left: middle income and few jobs."));
+}
+function jobsLegend() {
+  if (jobsView === "biv") { bivLegend(); return; }
+  legend("#leg-jobs", T(JOBS_LAB.fr, JOBS_LAB.en), SEQL);
+  if (jobsView === "dots") d3.select("#leg-jobs").append("span").attr("class", "sizenote").text(T("Taille des cercles : actifs résidents", "Circle size: employed residents"));
+}
+function jobsTitle() {
+  d3.select("#t-jobs").text(jobsView === "biv"
+    ? T(`Revenu de la commune et emplois accessibles en ${jobsT} min`, `Town income and jobs reachable within ${jobsT} min`)
+    : T(`Emplois accessibles en ${jobsT} min en transports en commun`, `Jobs reachable within ${jobsT} min by public transport`));
+}
+function jobsRepaint() {
+  if (jobsView === "biv") bivCuts();
+  jobsMap.paint();
+  jobsDots.attr("display", jobsView === "dots" ? null : "none")
+    .attr("fill", f => { const e = ea[f.properties.c]; return e ? jobsCol(e["jobs" + jobsT]) : "var(--none)"; });
+  jobsLegend();
+  jobsTitle();
+}
 function drawJobs() {
-  jobsMap = choro("map-jobs", "t-jobs", p => { const e = ea[p.c]; return e ? jobsCol(e["jobs" + jobsT]) : "var(--none)"; },
-    p => { const e = ea[p.c] || {}; return [[T(`Emplois en ${jobsT} min`, `Jobs within ${jobsT} min`), intf(e["jobs" + jobsT] || 0)], [T("Revenu médian", "Median income"), e.income ? eur(e.income) : T("n.d.", "n/a")], [T("Actifs résidents", "Employed residents"), intf(p.r)]]; });
-  legend("#leg-jobs", T(["< 10\u202fk", "10-50\u202fk", "50-200\u202fk", "200-500\u202fk", "0,5-1\u202fM", "1-2\u202fM", "2\u202fM +"], ["< 10k", "10-50k", "50-200k", "200-500k", "0.5-1 M", "1-2 M", "2 M+"]), SEQL);
-  d3.select("#t-jobs").text(T(`Emplois accessibles en ${jobsT} min en transports en commun`, `Jobs reachable within ${jobsT} min by public transport`));
+  const tip = p => { const e = ea[p.c] || {}; return [[T(`Emplois en ${jobsT} min`, `Jobs within ${jobsT} min`), intf(e["jobs" + jobsT] || 0)], [T("Revenu médian", "Median income"), e.income ? eur(e.income) : T("n.d.", "n/a")], [T("Actifs résidents", "Employed residents"), intf(p.r)]]; };
+  jobsMap = choro("map-jobs", "t-jobs", p => {
+    if (jobsView === "biv")  return bivFill(p);
+    if (jobsView === "dots") return "#ecebe7";
+    const e = ea[p.c]; return e ? jobsCol(e["jobs" + jobsT]) : "var(--none)"; }, tip);
+
+  // circles sized by employed residents (largest first so small towns stay on top)
+  const rad = d3.scaleSqrt().domain([0, d3.max(zones, f => f.properties.r)]).range([0, Math.max(9, jobsMap.el.clientWidth * 0.026)]);
+  jobsDots  = jobsMap.over.selectAll("circle").data(zones.filter(f => f.properties.r > 0).sort((a, b) => b.properties.r - a.properties.r)).join("circle")
+    .attr("transform", f => `translate(${jobsMap.path.centroid(f)})`).attr("stroke", "#fff").attr("stroke-width", 0.6).attr("vector-effect", NS).attr("fill-opacity", .92)
+    .on("mousemove", (ev, f) => tipOn(jobsMap.el, ev, f.properties.n, tip(f.properties))).on("mouseleave", () => tipOff(jobsMap.el))
+    .on("click", (ev, f) => setTown(f.properties));
+  jobsMap.onZoom(k => jobsDots.attr("r", f => rad(f.properties.r) / Math.sqrt(k)));
+
+  seg("#seg-jobsview", [["map", T("Carte", "Map")], ["dots", T("Actifs", "Workers")], ["biv", T("Revenu × emplois", "Income × jobs")]],
+      () => jobsView, v => { jobsView = v; jobsRepaint(); });
   findJobs = finder("find-jobs", "out-jobs", jobsMap, p => { const e = ea[p.c] || {};
     return T(`${p.n} : ${intf(e.jobs30)} emplois en 30 min, ${intf(e.jobs45)} en 45 min, ${intf(e.jobs60)} en 60 min.`,
              `${p.n}: ${intf(e.jobs30)} jobs within 30 min, ${intf(e.jobs45)} within 45 min, ${intf(e.jobs60)} within 60 min.`); });
   const rows = zones.map(f => f.properties).filter(p => p.r >= 5000).sort((a, b) => (ea[a.c] || {}).jobs45 - (ea[b.c] || {}).jobs45);
   table("#tab-jobs", [{ h: T("Commune", "Town"), f: p => p.n }, { h: T("Département", "Department"), f: p => DEPS[p.d] }, { h: "30 min", n: 1, f: p => intf(ea[p.c].jobs30) },
     { h: "45 min", n: 1, f: p => intf(ea[p.c].jobs45) }, { h: "60 min", n: 1, f: p => intf(ea[p.c].jobs60) }], rows);
+  jobsRepaint();
 }
-seg("#seg-jobs", null, () => jobsT, v => { jobsT = +v; d3.select("#t-jobs").text(T(`Emplois accessibles en ${jobsT} min en transports en commun`, `Jobs reachable within ${jobsT} min by public transport`)); jobsMap.paint(); findJobs(); });
+seg("#seg-jobs", null, () => jobsT, v => { jobsT = +v; jobsRepaint(); findJobs(); });
 // 2b income
 function drawIncome() {
   const el = document.getElementById("bars-income"), q = D.equal.quintiles;
-  const w = el.clientWidth, H = 260, m = { l: 46, r: 10, t: 10, b: 46 };
+  const w = el.clientWidth, H = 260, m = { l: 46, r: 58, t: 10, b: 46 };
   const x0 = d3.scaleBand().domain(q.map(r => r.quintile)).range([m.l, w - m.r]).padding(.22);
-  const x1 = d3.scaleBand().domain([30, 45, 60]).range([0, x0.bandwidth()]).padding(.08);
   const y = d3.scaleLinear().domain([0, d3.max(q, r => r.jobs60)]).nice().range([H - m.b, m.t]);
   const svg = d3.select(el).html("").append("svg").attr("width", w).attr("height", H).attr("role", "img").attr("aria-labelledby", "t-income");
   d3.select(el).style("position", "relative").append("div").attr("class", "tip");
   svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(v => NF().format(".1f")(v / 1e6) + "\u202fM").tickSize(-(w - m.l - m.r)));
-  const op = { 30: .38, 45: .68, 60: 1 };
-  const g = svg.selectAll("g.q").data(q).join("g").attr("transform", r => `translate(${x0(r.quintile)},0)`);
-  g.selectAll("rect").data(r => [30, 45, 60].map(t => ({ t, v: r["jobs" + t], r }))).join("rect").attr("tabindex", 0)
+  // connected dots: one line per travel time across income quintiles, shades of the page blue
+  const COL = { 30: "#6da7ec", 45: "#256abf", 60: "#0d366b" };
+  const cx  = r => x0(r.quintile) + x0.bandwidth() / 2;
+  const series = [30, 45, 60].map(t => ({ t, pts: q.map(r => ({ t, v: r["jobs" + t], r })) }));
+  const line = d3.line().x(d => cx(d.r)).y(d => y(d.v));
+  const s = svg.selectAll("g.ser").data(series).join("g").attr("class", "ser");
+  s.append("path").attr("d", d => line(d.pts)).attr("fill", "none").attr("stroke", d => COL[d.t]).attr("stroke-width", 2.5);
+  s.selectAll("circle").data(d => d.pts).join("circle").attr("tabindex", 0)
     .attr("aria-label", d => T(`Quintile ${d.r.quintile} : ${intf(d.v)} emplois en ${d.t} minutes`, `Quintile ${d.r.quintile}: ${intf(d.v)} jobs within ${d.t} minutes`))
-    .attr("x", d => x1(d.t)).attr("width", x1.bandwidth()).attr("y", d => y(d.v)).attr("height", d => y(0) - y(d.v)).attr("rx", 3)
-    .attr("fill", "#2a78d6").attr("fill-opacity", d => op[d.t])
+    .attr("cx", d => cx(d.r)).attr("cy", d => y(d.v)).attr("r", 5).attr("fill", d => COL[d.t]).attr("stroke", "#fff").attr("stroke-width", 1.5)
     .on("mousemove focus", (ev, d) => tipOn(el, ev, `Quintile ${d.r.quintile} (${eur(d.r.income_min)} - ${eur(d.r.income_max)})`, [[T(`Emplois en ${d.t} min`, `Jobs within ${d.t} min`), intf(d.v)]]))
     .on("mouseleave blur", () => tipOff(el));
+  // direct labels at the end of each line instead of a legend
+  s.append("text").attr("x", d => cx(d.pts[d.pts.length - 1].r) + 10).attr("y", d => y(d.pts[d.pts.length - 1].v)).attr("dominant-baseline", "middle")
+    .attr("fill", d => COL[d.t]).style("fill", d => COL[d.t]).style("font-weight", 600).text(d => `${d.t} min`);
   svg.append("g").selectAll("text").data(q).join("text").attr("x", r => x0(r.quintile) + x0.bandwidth() / 2).attr("y", H - m.b + 16).attr("text-anchor", "middle")
     .text(r => `Q${r.quintile}`);
   svg.append("g").selectAll("text").data(q).join("text").attr("x", r => x0(r.quintile) + x0.bandwidth() / 2).attr("y", H - m.b + 30).attr("text-anchor", "middle")
     .text(r => T(`${Math.round(r.income_min / 1000)}-${Math.round(r.income_max / 1000)}\u202fk€`, `€${Math.round(r.income_min / 1000)}-${Math.round(r.income_max / 1000)}k`));
-  const L = svg.append("g").attr("transform", `translate(${m.l + 6},${m.t + 4})`);
-  [30, 45, 60].forEach((t, i) => { L.append("rect").attr("x", i * 70).attr("width", 12).attr("height", 12).attr("rx", 2).attr("fill", "#2a78d6").attr("fill-opacity", op[t]);
-    L.append("text").attr("x", i * 70 + 16).attr("y", 10).text(`${t} min`); });
   table("#tab-income", [{ h: "Quintile", f: r => "Q" + r.quintile }, { h: T("Revenu médian (€)", "Median income (€)"), f: r => `${intf(r.income_min)} - ${intf(r.income_max)}` },
     { h: T("Emplois 30 min", "Jobs 30 min"), n: 1, f: r => intf(r.jobs30) }, { h: "45 min", n: 1, f: r => intf(r.jobs45) }, { h: "60 min", n: 1, f: r => intf(r.jobs60) }], q);
 }
